@@ -14,6 +14,7 @@ import { usePortfolioStore } from '@/stores/portfolioStore';
 import { sendChatMessage } from '@/services/groq';
 import { supabase } from '@/lib/supabase';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/constants/theme';
+import { SkeletonChat } from '@/components/ui/Skeleton';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date; }
 
@@ -118,7 +119,7 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }} keyboardVerticalOffset={90}>
-        {!ready ? <View style={s.loader}><ActivityIndicator size="large" color={Colors.accent} /></View> : (
+        {!ready ? <SkeletonChat /> : (
           <>
             <FlatList ref={listRef} data={messages} keyExtractor={i => i.id} renderItem={({ item }) => <ChatBubble message={item} />}
               contentContainerStyle={s.msgList} showsVerticalScrollIndicator={false}
@@ -129,7 +130,7 @@ export default function ChatScreen() {
                 </View>
               ) : null}
             />
-            <View style={[s.inputBar, { paddingBottom: keyboardVisible ? Spacing.md : (Platform.OS === 'ios' ? 90 : 70) }]}>
+            <View style={[s.inputBar, { paddingBottom: keyboardVisible ? Spacing.md : (Platform.OS === 'ios' ? 120 : 96) }]}>
               <TextInput style={s.input} value={input} onChangeText={setInput} placeholder="Ask Nexora AI..." placeholderTextColor={Colors.textTertiary} multiline maxLength={500} />
               <TouchableOpacity style={[s.sendBtn, (!input.trim() || isTyping) && s.sendOff]} onPress={handleSend} disabled={!input.trim() || isTyping}>
                 <Ionicons name="arrow-up" size={20} color={!input.trim() || isTyping ? Colors.textTertiary : Colors.black} />
@@ -158,14 +159,14 @@ const s = StyleSheet.create({
   bubble: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: BorderRadius.xl, maxWidth: '100%' },
   userBubble: { backgroundColor: Colors.accent, borderBottomRightRadius: 6 },
   aiBubble: { backgroundColor: Colors.surfaceElevated, borderBottomLeftRadius: 6, borderWidth: 1, borderColor: Colors.border + '60' },
-  bubbleText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 22 },
+  bubbleText: { fontSize: FontSize.md, color: Colors.text, lineHeight: 24 },
   typingDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.textSecondary },
   sugBox: { paddingVertical: Spacing.xl, gap: Spacing.sm },
   sugTitle: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: Spacing.sm },
   sugPill: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surfaceElevated },
   sugText: { fontSize: FontSize.md, color: Colors.text },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border + '40', backgroundColor: Colors.background, gap: Spacing.sm },
-  input: { flex: 1, fontSize: FontSize.md, color: Colors.text, backgroundColor: Colors.surfaceElevated, borderRadius: BorderRadius.xl, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, maxHeight: 100, borderWidth: 1, borderColor: Colors.border },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, fontSize: FontSize.md, color: Colors.text, backgroundColor: Colors.surfaceLight, borderRadius: BorderRadius.xl, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, maxHeight: 100, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   sendOff: { backgroundColor: Colors.surfaceElevated },
 });

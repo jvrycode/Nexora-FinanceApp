@@ -128,6 +128,32 @@ export function SkeletonDashboard() {
   );
 }
 
+// ─── Chat skeleton — pulsing chat bubbles ─────────────────────
+function SkeletonChatBubble({ isUser }: { isUser: boolean }) {
+  return (
+    <View style={[skStyles.chatBubbleRow, isUser && skStyles.chatBubbleRowUser]}>
+      <Skeleton
+        width={isUser ? 180 : 220}
+        height={isUser ? 36 : 72}
+        borderRadius={16}
+        style={isUser ? skStyles.chatBubbleUser : skStyles.chatBubbleAI}
+      />
+    </View>
+  );
+}
+
+export function SkeletonChat() {
+  return (
+    <View style={skStyles.chatContainer}>
+      <SkeletonChatBubble isUser={false} />
+      <SkeletonChatBubble isUser={true} />
+      <SkeletonChatBubble isUser={false} />
+      <SkeletonChatBubble isUser={true} />
+      <SkeletonChatBubble isUser={false} />
+    </View>
+  );
+}
+
 const skStyles = StyleSheet.create({
   card: {
     paddingVertical: Spacing.md,
@@ -176,5 +202,26 @@ const skStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: Spacing.md,
+  },
+  // Chat skeleton
+  chatContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    gap: Spacing.lg,
+  },
+  chatBubbleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    maxWidth: '85%',
+  },
+  chatBubbleRowUser: {
+    alignSelf: 'flex-end',
+  },
+  chatBubbleAI: {
+    borderBottomLeftRadius: 4,
+  },
+  chatBubbleUser: {
+    borderBottomRightRadius: 4,
   },
 });

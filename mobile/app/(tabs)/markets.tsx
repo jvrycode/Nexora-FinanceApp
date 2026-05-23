@@ -12,7 +12,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +30,11 @@ import { CoinMarketData } from '@/types';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/constants/theme';
 
 type FilterType = 'all' | 'gainers' | 'losers';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 function formatPrice(price: number): string {
   if (price >= 1) {
@@ -147,20 +156,28 @@ export default function MarketsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [globalData, setGlobalData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
+    setError(null);
     try {
-      const [marketData, global] = await Promise.all([
-        getMarketData(1, 30, true),
-        getGlobalMarketData(),
-      ]);
+      // Stagger the two calls slightly to reduce rate-limit pressure
+      const marketData = await getMarketData(1, 30, true);
       setCoins(marketData);
-      setGlobalData(global);
-    } catch (error) {
-      console.error('Failed to load market data:', error);
+    } catch (err: any) {
+      console.error('Failed to load market data:', err);
+      setError(err?.message || 'Failed to load market data. Pull down to retry.');
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+    // Global market data is optional — don't block coins if it fails
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      const global = await getGlobalMarketData();
+      setGlobalData(global);
+    } catch {
+      // Non-critical — silently skip
     }
   }, []);
 
@@ -189,25 +206,14 @@ export default function MarketsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors.accent}
-            colors={[Colors.accent]}
-          />
-        }
-      >
-        {/* Header — matching reference "In the past 24 hours / Market is up" */}
-        <View style={styles.header}>
+      {/* ── Sticky frosted header ── */}
+      <View style={styles.stickyHeader}>
+        <BlurView intensity={55} tint="dark" style={styles.stickyBlur} />
+        <View style={[styles.header, { marginTop: Spacing.md }]}>
           <Text style={styles.headerSubtitle}>In the past 24 hours</Text>
           <View style={styles.headerRow}>
             <Text style={styles.headerTitle}>
-              Market is {isMarketUp ? 'up' : 'down'}
+              Market is {isMarketUp ? <Text style={{ color: Colors.positive }}>up</Text> : <Text style={{ color: Colors.negative }}>down</Text>}
             </Text>
             <View style={[styles.marketBadge, isMarketUp ? styles.marketBadgeUp : styles.marketBadgeDown]}>
               <Ionicons
@@ -221,8 +227,6 @@ export default function MarketsScreen() {
             </View>
           </View>
         </View>
-
-        {/* Filter pills — matching reference [All assets] [Top gainers] */}
         <View style={styles.filters}>
           {[
             { key: 'all', label: 'All assets' },
@@ -232,22 +236,53 @@ export default function MarketsScreen() {
             <TouchableOpacity
               key={f.key}
               style={[styles.filterPill, filter === f.key && styles.filterPillActive]}
-              onPress={() => setFilter(f.key as FilterType)}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setFilter(f.key as FilterType);
+              }}
               activeOpacity={0.7}
             >
-              <Text
-                style={[styles.filterText, filter === f.key && styles.filterTextActive]}
-              >
+              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
                 {f.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
+      </View>
 
-        {/* Coin List */}
+      {/* ── Scrollable coin list ── */}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
+      >
         {loading ? (
           <View style={styles.loaderContainer}>
             <SkeletonMarketList />
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="wifi-outline" size={40} color={Colors.textTertiary} />
+            <Text style={styles.errorTitle}>Couldn't load markets</Text>
+            <Text style={styles.errorMsg}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); loadData(); }}>
+              <Ionicons name="refresh-outline" size={16} color={Colors.background} />
+              <Text style={styles.retryText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredCoins.length === 0 ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="search-outline" size={40} color={Colors.textTertiary} />
+            <Text style={styles.errorTitle}>No coins found</Text>
+            <Text style={styles.errorMsg}>Try switching to "All assets"</Text>
           </View>
         ) : (
           <View style={styles.coinList}>
@@ -256,7 +291,6 @@ export default function MarketsScreen() {
             ))}
           </View>
         )}
-
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
@@ -272,8 +306,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    paddingTop: 0,
     paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
+  },
+  // Sticky frosted header
+  stickyHeader: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  stickyBlur: {
+    ...StyleSheet.absoluteFillObject,
   },
   // Header
   header: {
@@ -341,8 +387,42 @@ const styles = StyleSheet.create({
   },
   // Coin List
   loaderContainer: {
-    paddingVertical: 60,
+    paddingVertical: 40,
     alignItems: 'center',
+  },
+  // Error / empty states
+  errorContainer: {
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.md,
+  },
+  errorTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+    marginTop: Spacing.sm,
+  },
+  errorMsg: {
+    fontSize: FontSize.sm,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.text,
+  },
+  retryText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.background,
   },
   coinList: {
     gap: 0,

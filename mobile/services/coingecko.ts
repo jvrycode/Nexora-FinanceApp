@@ -6,18 +6,49 @@
 import { CoinMarketData, ChartDataPoint } from '@/types';
 
 const BASE_URL = 'https://api.coingecko.com/api/v3';
+const TIMEOUT_MS = 10_000;
 
-async function fetchCG(endpoint: string, retries = 2): Promise<any> {
-  const response = await fetch(`${BASE_URL}${endpoint}`);
-  if (response.status === 429 && retries > 0) {
-    // Rate limited — wait and retry
-    await new Promise((r) => setTimeout(r, 2000));
-    return fetchCG(endpoint, retries - 1);
+// ─── In-memory cache (5 min TTL) ─────────────────────────────
+const cache: Record<string, { data: any; at: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000;
+
+function getCached(key: string): any | null {
+  const entry = cache[key];
+  if (entry && Date.now() - entry.at < CACHE_TTL) return entry.data;
+  return null;
+}
+function setCached(key: string, data: any) {
+  cache[key] = { data, at: Date.now() };
+}
+
+async function fetchCG(endpoint: string, retries = 3): Promise<any> {
+  const cached = getCached(endpoint);
+  if (cached) return cached;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, { signal: controller.signal });
+    clearTimeout(timer);
+
+    if (response.status === 429 && retries > 0) {
+      // Rate limited — back off exponentially
+      const delay = (4 - retries) * 3000;
+      await new Promise((r) => setTimeout(r, delay));
+      return fetchCG(endpoint, retries - 1);
+    }
+    if (!response.ok) {
+      throw new Error(`CoinGecko error: ${response.status}`);
+    }
+    const data = await response.json();
+    setCached(endpoint, data);
+    return data;
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('Request timed out. Check your connection.');
+    throw err;
   }
-  if (!response.ok) {
-    throw new Error(`CoinGecko API error: ${response.status}`);
-  }
-  return response.json();
 }
 
 /**

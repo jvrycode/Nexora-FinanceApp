@@ -59,5 +59,9 @@ export function AnimatedNumber({
     return () => animRef.removeListener(listener);
   }, [value]);
 
-  return <Text style={style}>{display}</Text>;
+  return (
+    <Text style={[{ fontVariant: ['tabular-nums'] }, style]}>
+      {display}
+    </Text>
+  );
 }

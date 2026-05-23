@@ -19,6 +19,12 @@ export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const [swiped, setSwiped] = useState(false);
 
+  const deleteOpacity = translateX.interpolate({
+    inputRange: [-DELETE_WIDTH, -10, 0],
+    outputRange: [1, 1, 0],
+    extrapolate: 'clamp',
+  });
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dy) < 20,
@@ -53,12 +59,12 @@ export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
   return (
     <View style={styles.container}>
       {/* Delete action behind */}
-      <View style={styles.deleteAction}>
+      <Animated.View style={[styles.deleteAction, { opacity: deleteOpacity }]}>
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
           <Ionicons name="trash-outline" size={20} color={Colors.text} />
           <Text style={styles.deleteText}>Delete</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Content slides left */}
       <Animated.View
@@ -98,6 +104,6 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.medium,
   },
   content: {
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
   },
 });

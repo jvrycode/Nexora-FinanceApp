@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
 import { usePortfolioStore } from '@/stores/portfolioStore';
 import { StyledInput } from '@/components/ui/StyledInput';
+import { CoinPicker, CoinOption } from '@/components/ui/CoinPicker';
 import { AccentButton } from '@/components/ui/AccentButton';
 import { AssetCategory } from '@/types';
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/constants/theme';
@@ -31,9 +32,7 @@ export default function AddAssetScreen() {
   const [bankName, setBankName] = useState('');
   const [accountName, setAccountName] = useState('');
   const [balance, setBalance] = useState('');
-  const [coinName, setCoinName] = useState('');
-  const [coinId, setCoinId] = useState('');
-  const [coinSymbol, setCoinSymbol] = useState('');
+  const [selectedCoin, setSelectedCoin] = useState<CoinOption | null>(null);
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [stockSymbol, setStockSymbol] = useState('');
@@ -53,8 +52,8 @@ export default function AddAssetScreen() {
           await store.addBankAccount(user.id, { bank_name: bankName, account_name: accountName || bankName, balance: parseFloat(balance) });
           break;
         case 'crypto':
-          if (!coinName || !quantity) throw new Error('Fill in coin name and quantity');
-          await store.addCryptoHolding(user.id, { coin_id: coinId || coinName.toLowerCase(), symbol: coinSymbol || coinName.slice(0, 4).toUpperCase(), name: coinName, quantity: parseFloat(quantity), purchase_price: purchasePrice ? parseFloat(purchasePrice) : null });
+          if (!selectedCoin?.name || !quantity) throw new Error('Select a coin and enter quantity');
+          await store.addCryptoHolding(user.id, { coin_id: selectedCoin.coinId, symbol: selectedCoin.symbol, name: selectedCoin.name, quantity: parseFloat(quantity), purchase_price: purchasePrice ? parseFloat(purchasePrice) : null });
           break;
         case 'stock':
           if (!stockSymbol || !shares) throw new Error('Fill in stock symbol and shares');
@@ -118,9 +117,7 @@ export default function AddAssetScreen() {
             )}
             {category === 'crypto' && (
               <>
-                <StyledInput label="Coin Name" icon="logo-bitcoin" value={coinName} onChangeText={setCoinName} placeholder="e.g. Bitcoin" />
-                <StyledInput label="Coin ID (CoinGecko)" icon="search-outline" value={coinId} onChangeText={setCoinId} placeholder="e.g. bitcoin, ethereum" autoCapitalize="none" />
-                <StyledInput label="Symbol" icon="pricetag-outline" value={coinSymbol} onChangeText={setCoinSymbol} placeholder="e.g. BTC" autoCapitalize="characters" />
+                <CoinPicker selected={selectedCoin} onSelect={setSelectedCoin} />
                 <StyledInput label="Quantity" icon="layers-outline" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" placeholder="0.00" />
                 <StyledInput label="Purchase Price (USD)" icon="cash-outline" value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" placeholder="Optional" />
               </>

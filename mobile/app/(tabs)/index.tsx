@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePortfolioStore } from '@/stores/portfolioStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { BankCard, CARD_WIDTH } from '@/components/ui/BankCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { SkeletonDashboard } from '@/components/ui/Skeleton';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
@@ -35,21 +36,33 @@ function formatCurrency(amount: number, currencyCode = 'USD'): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, minimumFractionDigits: 2 }).format(amount);
 }
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 
 
 // ─── Full-width gradient area chart ─────────────────────────
-function NetWorthChart({ history, isUp, width: w, height: h = 80 }: {
+function NetWorthChart({ history: rawHistory, isUp, width: w, height: h = 80 }: {
   history: number[]; isUp: boolean; width: number; height?: number;
 }) {
-  if (history.length < 2) return <View style={{ height: h }} />;
+  if (rawHistory.length === 0) return <View style={{ height: h }} />;
+
+  const history = rawHistory.length === 1 ? [rawHistory[0], rawHistory[0]] : rawHistory;
   const min = Math.min(...history);
   const max = Math.max(...history);
-  const range = max - min || 1;
+  const range = max === min ? 1 : max - min;
   const pad = 4;
-  const pts = history.map((v, i) => ({
-    x: (i / (history.length - 1)) * w,
-    y: pad + (h - pad * 2) - ((v - min) / range) * (h - pad * 2),
-  }));
+  const pts = history.map((v, i) => {
+    const yRatio = max === min ? 0.5 : (v - min) / range;
+    return {
+      x: (i / (history.length - 1)) * w,
+      y: pad + (h - pad * 2) - yRatio * (h - pad * 2),
+    };
+  });
   const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const fillPath = `${linePath} L${w},${h} L0,${h} Z`;
   const color = isUp ? Colors.positive : Colors.negative;
@@ -58,7 +71,7 @@ function NetWorthChart({ history, isUp, width: w, height: h = 80 }: {
     <Svg width={w} height={h}>
       <Defs>
         <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.35" />
+          <Stop offset="0" stopColor={color} stopOpacity="0.15" />
           <Stop offset="1" stopColor={color} stopOpacity="0" />
         </LinearGradient>
       </Defs>
@@ -162,7 +175,7 @@ export default function DashboardScreen() {
   const { currency } = useSettingsStore();
 
   const [showChartModal, setShowChartModal] = useState(false);
-  const [timeFilter, setTimeFilter] = useState<'1W'|'1M'|'3M'|'ALL'>('1M');
+  const [timeFilter, setTimeFilter] = useState<'1W' | '1M' | '3M' | 'ALL'>('1M');
   const [netWorthHistory, setNetWorthHistory] = useState<number[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -217,13 +230,7 @@ export default function DashboardScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Your Overview</Text>
-            <Text style={styles.userName}>{userName}</Text>
-          </View>
-          <TouchableOpacity style={styles.profileBtn} onPress={() => router.push('/(tabs)/profile')}>
-            <Ionicons name="person-circle-outline" size={32} color={Colors.textSecondary} />
-          </TouchableOpacity>
+          <Text style={styles.greeting}>{getGreeting()}, {userName.split(' ')[0]}.</Text>
         </View>
 
         {loading && !summary ? (
@@ -306,30 +313,43 @@ export default function DashboardScreen() {
             </View>
 
             {/* Bank Accounts */}
-            <Section title="Bank Accounts" total={summary?.totalAssets || 0} currency={currency}>
+            <GlassCard style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Bank Accounts</Text>
+                <Text style={styles.sectionTotal}>{new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', minimumFractionDigits: 2 }).format(summary?.totalAssets || 0)}</Text>
+              </View>
               {bankAccounts.length === 0 ? (
                 <EmptyState message="No bank accounts added yet" onAdd={() => handleAddAsset('bank')} addLabel="+ Add Account" />
               ) : (
                 <>
-                  {bankAccounts.map((acc) => (
-                    <AssetRow
-                      key={acc.id}
-                      icon="business-outline"
-                      iconColor={Colors.textSecondary}
-                      name={acc.bank_name}
-                      subtitle={acc.account_name}
-                      amount={Number(acc.balance)}
-                      onPress={() => router.push({ pathname: '/edit-asset', params: { category: 'bank', id: acc.id, bank_name: acc.bank_name, account_name: acc.account_name || '', balance: String(acc.balance) } })}
-                      onDelete={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => { }); deleteAsset('bank_accounts', acc.id, user!.id); }}
-                    />
-                  ))}
-                  <TouchableOpacity style={styles.addRow} onPress={() => handleAddAsset('bank')}>
+                  {/* Horizontal card carousel */}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.cardCarousel}
+                    decelerationRate="fast"
+                    snapToInterval={CARD_WIDTH + 16}
+                    snapToAlignment="start"
+                    style={styles.carouselScroll}
+                  >
+                    {bankAccounts.map((acc) => (
+                      <BankCard
+                        key={acc.id}
+                        bankName={acc.bank_name}
+                        accountName={acc.account_name || ''}
+                        balance={Number(acc.balance)}
+                        onPress={() => router.push({ pathname: '/edit-asset', params: { category: 'bank', id: acc.id, bank_name: acc.bank_name, account_name: acc.account_name || '', balance: String(acc.balance) } })}
+                        onDelete={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => { }); deleteAsset('bank_accounts', acc.id, user!.id); }}
+                      />
+                    ))}
+                  </ScrollView>
+                  <TouchableOpacity style={[styles.addRow, { marginTop: Spacing.md }]} onPress={() => handleAddAsset('bank')}>
                     <Ionicons name="add" size={18} color={Colors.accent} />
                     <Text style={styles.addRowText}>Add Account</Text>
                   </TouchableOpacity>
                 </>
               )}
-            </Section>
+            </GlassCard>
 
             {/* Crypto */}
             <Section title="Crypto" total={summary?.totalCrypto || 0} currency={currency}>
@@ -422,13 +442,12 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xxl },
-  greeting: { fontSize: FontSize.lg, fontWeight: FontWeight.semibold, color: Colors.text },
-  userName: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  greeting: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, color: Colors.text, letterSpacing: -0.5 },
   profileBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
   // Net Worth Card
   netWorthCard: { alignItems: 'center', paddingTop: Spacing.xxxl, paddingBottom: Spacing.lg, paddingHorizontal: 0, overflow: 'hidden' },
   netWorthLabel: { fontSize: FontSize.sm, color: Colors.text, fontWeight: FontWeight.medium, backgroundColor: Colors.surfaceElevated, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.xs, borderRadius: BorderRadius.full, overflow: 'hidden', marginBottom: Spacing.md },
-  netWorthAmount: { fontSize: FontSize.hero, fontWeight: FontWeight.bold, color: Colors.text, letterSpacing: -1 },
+  netWorthAmount: { fontSize: FontSize.hero, fontWeight: FontWeight.bold, color: Colors.text, letterSpacing: -2, fontVariant: ['tabular-nums'] },
   netWorthBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: Spacing.md, marginTop: Spacing.lg },
   changeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.md, paddingVertical: 5, borderRadius: BorderRadius.full, marginTop: Spacing.sm, alignSelf: 'center' },
   changeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -452,22 +471,24 @@ const styles = StyleSheet.create({
   // Quick Actions
   quickActions: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: Spacing.xxl },
   quickAction: { alignItems: 'center', gap: Spacing.sm },
-  quickActionIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
+  quickActionIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.surfaceLight, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   quickActionLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: FontWeight.medium },
   // Sections
   section: { marginBottom: Spacing.lg },
+  carouselScroll: { marginHorizontal: -Spacing.xl },
+  cardCarousel: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md, paddingTop: 4 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
   sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text },
-  sectionTotal: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text },
+  sectionTotal: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text, fontVariant: ['tabular-nums'] },
   // Asset Row
-  assetRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border + '40' },
+  assetRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, borderTopWidth: 0, borderTopColor: 'transparent' },
   assetIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md },
   assetInfo: { flex: 1 },
   assetName: { fontSize: FontSize.md, fontWeight: FontWeight.medium, color: Colors.text },
   assetSubtitle: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  assetAmount: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text },
+  assetAmount: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text, fontVariant: ['tabular-nums'] },
   // Add Row
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border + '40' },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, borderTopWidth: 0, borderTopColor: 'transparent' },
   addRowText: { fontSize: FontSize.md, color: Colors.accent, fontWeight: FontWeight.medium },
   // Empty State
   emptyState: { paddingVertical: Spacing.xl, alignItems: 'center', gap: Spacing.sm },
