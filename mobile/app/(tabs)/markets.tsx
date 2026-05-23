@@ -208,7 +208,6 @@ export default function MarketsScreen() {
     <SafeAreaView style={styles.safe}>
       {/* ── Sticky frosted header ── */}
       <View style={styles.stickyHeader}>
-        <BlurView intensity={80} tint="dark" style={styles.stickyBlur} />
         <View style={[styles.header, { marginTop: Spacing.xl }]}>
           <View style={styles.headerRow}>
             <Text style={styles.headerTitle}>
@@ -310,15 +309,11 @@ const styles = StyleSheet.create({
   },
   // Sticky frosted header
   stickyHeader: {
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.background,
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
-    overflow: 'hidden',
-  },
-  stickyBlur: {
-    ...StyleSheet.absoluteFillObject,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   // Header
   header: {
