@@ -281,36 +281,12 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <Text style={st.name}>{name}</Text>
           <Text style={st.email}>{email}</Text>
-          {memberSince ? <Text style={st.memberSince}>Member since {memberSince}</Text> : null}
-          <TouchableOpacity style={st.editProfileBtn} onPress={handleEditProfile}>
-            <Ionicons name="create-outline" size={14} color={Colors.text} />
-            <Text style={st.editProfileText}>Edit Profile</Text>
-          </TouchableOpacity>
+          {memberSince && (
+            <Text style={st.memberMeta}>Member since {memberSince} · {totalAccounts} assets tracked</Text>
+          )}
         </GlassCard>
 
-        {/* ── Portfolio Breakdown ── */}
-        <GlassCard style={st.breakdownCard}>
-          <Text style={st.sectionTitle}>Portfolio Breakdown</Text>
-          <View style={st.breakdownList}>
-            <StatRow label="Bank" value={fmt(summary?.totalAssets || 0, currency)} />
-            <StatRow label="Crypto" value={fmt(summary?.totalCrypto || 0, currency)} />
-            <StatRow label="Stocks" value={fmt(summary?.totalStocks || 0, currency)} />
-            <StatRow label="Liabilities" value={fmt(summary?.totalLiabilities || 0, currency)} />
-          </View>
-          <View style={st.statsBanner}>
-            <View style={st.statItem}>
-              <Text style={st.statNumber}>{totalAccounts}</Text>
-              <Text style={st.statLabel}>Accounts</Text>
-            </View>
-            <View style={st.statDivider} />
-            <View style={st.statItem}>
-              <Text style={[st.statNumber, { color: Colors.positive }]}>
-                {fmt(summary?.totalNetWorth || 0, currency)}
-              </Text>
-              <Text style={st.statLabel}>Net Worth</Text>
-            </View>
-          </View>
-        </GlassCard>
+
 
         {/* ── Account Settings ── */}
         <GlassCard style={st.settingsCard}>
@@ -339,11 +315,18 @@ export default function ProfileScreen() {
         </GlassCard>
 
         {/* ── Danger Zone ── */}
-        <GlassCard style={st.settingsCard}>
-          <SettingsRow icon="log-out-outline" label="Sign Out" onPress={handleSignOut} danger />
+        <GlassCard style={{ ...st.settingsCard, borderColor: Colors.negative + '30', borderWidth: 1 }}>
+          <Text style={[st.sectionTitle, { color: Colors.negative }]}>Danger Zone</Text>
+          <Text style={st.dangerWarning}>
+            Once you delete your account, there is no going back. Please be certain.
+          </Text>
           <SettingsRow icon="trash-outline" label="Delete Account" onPress={handleDeleteAccount} danger />
         </GlassCard>
 
+        {/* ── Footer ── */}
+        <TouchableOpacity style={st.signOutBtn} onPress={handleSignOut}>
+          <Text style={st.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
         <Text style={st.version}>Nexora Finance v1.0.0</Text>
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -441,13 +424,7 @@ const st = StyleSheet.create({
   },
   name: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text },
   email: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 4 },
-  memberSince: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: 4 },
-  editProfileBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginTop: Spacing.lg, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full, backgroundColor: Colors.surfaceElevated,
-  },
-  editProfileText: { fontSize: FontSize.sm, color: Colors.text, fontWeight: FontWeight.medium },
+  memberMeta: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: Spacing.md },
 
   // Breakdown
   breakdownCard: { marginBottom: Spacing.lg, paddingVertical: Spacing.xl },
@@ -479,8 +456,18 @@ const st = StyleSheet.create({
   settingsLabel: { fontSize: FontSize.md, color: Colors.text, fontWeight: FontWeight.medium },
   settingsValue: { fontSize: FontSize.sm, color: Colors.textSecondary, marginRight: Spacing.xs },
 
-  // Version
-  version: { textAlign: 'center', fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: Spacing.xl },
+  // Danger
+  dangerWarning: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: Spacing.md, lineHeight: 20 },
+
+  // Footer
+  signOutBtn: {
+    alignSelf: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xxxl,
+    marginTop: Spacing.lg,
+  },
+  signOutText: { fontSize: FontSize.md, color: Colors.textTertiary, fontWeight: FontWeight.medium },
+  version: { textAlign: 'center', fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: Spacing.sm },
 
   // Modal (center, for name/password)
   modalOverlay: {

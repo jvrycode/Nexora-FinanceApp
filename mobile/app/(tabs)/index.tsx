@@ -220,6 +220,10 @@ export default function DashboardScreen() {
     ? netWorthHistory[netWorthHistory.length - 1] >= netWorthHistory[0]
     : true;
 
+  const maxNetWorth = netWorthHistory.length > 0 ? Math.max(...netWorthHistory) : 0;
+  const minNetWorth = netWorthHistory.length > 0 ? Math.min(...netWorthHistory) : 0;
+  const dollarChange = netWorthHistory.length > 1 ? netWorthHistory[netWorthHistory.length - 1] - netWorthHistory[0] : 0;
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -302,6 +306,28 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                {/* Quick Stats Row */}
+                {netWorthHistory.length > 0 && (
+                  <View style={styles.chartStatsRow}>
+                    <View style={styles.chartStatItem}>
+                      <Text style={styles.chartStatLabel}>Highest</Text>
+                      <Text style={styles.chartStatValue}>{formatCurrency(maxNetWorth, currency)}</Text>
+                    </View>
+                    <View style={styles.chartStatDivider} />
+                    <View style={styles.chartStatItem}>
+                      <Text style={styles.chartStatLabel}>Lowest</Text>
+                      <Text style={styles.chartStatValue}>{formatCurrency(minNetWorth, currency)}</Text>
+                    </View>
+                    <View style={styles.chartStatDivider} />
+                    <View style={styles.chartStatItem}>
+                      <Text style={styles.chartStatLabel}>Change</Text>
+                      <Text style={[styles.chartStatValue, { color: dollarChange >= 0 ? Colors.positive : Colors.negative }]}>
+                        {dollarChange >= 0 ? '+' : ''}{formatCurrency(dollarChange, currency)}
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </BlurView>
             </Modal>
 
@@ -495,4 +521,37 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: FontSize.sm, color: Colors.textTertiary, textAlign: 'center' },
   emptyAddBtn: { marginTop: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, borderRadius: BorderRadius.full, backgroundColor: Colors.surfaceElevated },
   emptyAddText: { fontSize: FontSize.sm, color: Colors.text, fontWeight: FontWeight.medium },
+
+  // Chart Stats
+  chartStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xl,
+    paddingTop: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  chartStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  chartStatLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textTertiary,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  chartStatValue: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  chartStatDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
 });

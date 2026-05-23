@@ -208,12 +208,11 @@ export default function MarketsScreen() {
     <SafeAreaView style={styles.safe}>
       {/* ── Sticky frosted header ── */}
       <View style={styles.stickyHeader}>
-        <BlurView intensity={55} tint="dark" style={styles.stickyBlur} />
-        <View style={[styles.header, { marginTop: Spacing.md }]}>
-          <Text style={styles.headerSubtitle}>In the past 24 hours</Text>
+        <BlurView intensity={80} tint="dark" style={styles.stickyBlur} />
+        <View style={[styles.header, { marginTop: Spacing.xl }]}>
           <View style={styles.headerRow}>
             <Text style={styles.headerTitle}>
-              Market is {isMarketUp ? <Text style={{ color: Colors.positive }}>up</Text> : <Text style={{ color: Colors.negative }}>down</Text>}
+              Market is {isMarketUp ? 'up' : 'down'}
             </Text>
             <View style={[styles.marketBadge, isMarketUp ? styles.marketBadgeUp : styles.marketBadgeDown]}>
               <Ionicons
@@ -222,7 +221,7 @@ export default function MarketsScreen() {
                 color={isMarketUp ? Colors.positive : Colors.negative}
               />
               <Text style={[styles.marketBadgeText, { color: isMarketUp ? Colors.positive : Colors.negative }]}>
-                {Math.abs(marketChange).toFixed(1)}%
+                {Math.abs(marketChange).toFixed(2)}%
               </Text>
             </View>
           </View>
